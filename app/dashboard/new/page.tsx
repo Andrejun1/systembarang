@@ -207,7 +207,7 @@ export default function NewLoanPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Peminjaman Barang Baru</CardTitle>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-white">
             Isi formulir di bawah ini untuk mencatat peminjaman barang
           </p>
         </CardHeader>

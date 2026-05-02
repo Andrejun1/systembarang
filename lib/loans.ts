@@ -102,13 +102,21 @@ export async function generateKodeUnik(): Promise<string> {
 // ============================================================================
 // CREATE LOAN - SINGLE ITEM (BACKWARD COMPATIBLE)
 // ============================================================================
-export async function createLoan(loan: LoanInsert & { 
-  nama_barang: string;
-  item_id: string;
-  quantity?: number;
-  foto_barang_url?: string | null;
-}) {
-  const { nama_barang, item_id, quantity = 1, foto_barang_url, ...loanData } = loan;
+export async function createLoan(
+  loan: LoanInsert & {
+    nama_barang: string;
+    item_id: string;
+    quantity?: number;
+    foto_barang_url?: string | null;
+  },
+) {
+  const {
+    nama_barang,
+    item_id,
+    quantity = 1,
+    foto_barang_url,
+    ...loanData
+  } = loan;
 
   const { data, error } = await supabase
     .from("loans")
@@ -123,7 +131,7 @@ export async function createLoan(loan: LoanInsert & {
     })
     .select()
     .single();
-    
+
   if (error) throw error;
   return data as Loan;
 }
@@ -137,7 +145,7 @@ export async function createLoanWithItems(
     item: Item;
     quantity: number;
     foto_barang_url?: string | null;
-  }>
+  }>,
 ) {
   if (items.length === 0) {
     throw new Error("Minimal 1 item harus dipilih");
@@ -149,7 +157,9 @@ export async function createLoanWithItems(
       throw new Error(`Quantity untuk "${item.nama_barang}" minimal 1`);
     }
     if (quantity > item.stok_tersedia) {
-      throw new Error(`Stok "${item.nama_barang}" tidak cukup. Tersedia: ${item.stok_tersedia}`);
+      throw new Error(
+        `Stok "${item.nama_barang}" tidak cukup. Tersedia: ${item.stok_tersedia}`,
+      );
     }
   }
 
@@ -172,12 +182,14 @@ export async function createLoanWithItems(
   if (loanError) throw loanError;
 
   // 2️⃣ Buat record loan_items untuk setiap barang
-  const loanItemsData: LoanItemInsert[] = items.map(({ item, quantity, foto_barang_url }) => ({
-    loan_id: loan.id,
-    item_id: item.id,
-    quantity,
-    foto_barang_url: foto_barang_url ?? null,
-  }));
+  const loanItemsData: LoanItemInsert[] = items.map(
+    ({ item, quantity, foto_barang_url }) => ({
+      loan_id: loan.id,
+      item_id: item.id,
+      quantity,
+      foto_barang_url: foto_barang_url ?? null,
+    }),
+  );
 
   const { error: itemsError } = await supabase
     .from("loan_items")
@@ -203,7 +215,30 @@ export async function createLoanWithItems(
 export async function getAllLoans(): Promise<Loan[]> {
   const { data, error } = await supabase
     .from("loans")
-    .select("*")
+    .select(
+      `
+      *,
+      loan_items (
+        id,
+        item_id,
+        quantity,
+        foto_barang_url,
+        created_at,
+        items (
+          id,
+          kode_barang,
+          nama_barang,
+          deskripsi,
+          kategori,
+          stok_total,
+          stok_tersedia,
+          foto_url,
+          barcode,
+          qr_code
+        )
+      )
+    `,
+    )
     .order("tanggal_pinjam", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Loan[];
@@ -230,10 +265,13 @@ export async function getLoanById(id: string): Promise<Loan | null> {
 }
 
 // 👇 NEW: Get loan WITH items (join dengan loan_items + items)
-export async function getLoanWithItems(id: string): Promise<(Loan & { loan_items: LoanItemWithItem[] }) | null> {
+export async function getLoanWithItems(
+  id: string,
+): Promise<(Loan & { loan_items: LoanItemWithItem[] }) | null> {
   const { data, error } = await supabase
     .from("loans")
-    .select(`
+    .select(
+      `
       *,
       loan_items (
         id,
@@ -254,18 +292,22 @@ export async function getLoanWithItems(id: string): Promise<(Loan & { loan_items
           qr_code
         )
       )
-    `)
+    `,
+    )
     .eq("id", id)
     .maybeSingle();
-    
+
   if (error) throw error;
   return data as (Loan & { loan_items: LoanItemWithItem[] }) | null;
 }
 
-export async function getLoanWithItemsByKode(kodeUnik: string): Promise<(Loan & { loan_items: LoanItemWithItem[] }) | null> {
+export async function getLoanWithItemsByKode(
+  kodeUnik: string,
+): Promise<(Loan & { loan_items: LoanItemWithItem[] }) | null> {
   const { data, error } = await supabase
     .from("loans")
-    .select(`
+    .select(
+      `
       *,
       loan_items (
         id,
@@ -286,15 +328,18 @@ export async function getLoanWithItemsByKode(kodeUnik: string): Promise<(Loan & 
           qr_code
         )
       )
-    `)
+    `,
+    )
     .eq("kode_unik", kodeUnik)
     .maybeSingle();
-    
+
   if (error) throw error;
   return data as (Loan & { loan_items: LoanItemWithItem[] }) | null;
 }
 
-export async function getLoansByStatus(status: "dipinjam" | "kembali" | "selesai"): Promise<Loan[]> {
+export async function getLoansByStatus(
+  status: "dipinjam" | "kembali" | "selesai",
+): Promise<Loan[]> {
   const { data, error } = await supabase
     .from("loans")
     .select("*")
@@ -318,7 +363,10 @@ export async function getOverdueLoans(): Promise<Loan[]> {
 // ============================================================================
 // UPDATE & RETURN
 // ============================================================================
-export async function updateLoan(id: string, updates: LoanUpdate): Promise<Loan> {
+export async function updateLoan(
+  id: string,
+  updates: LoanUpdate,
+): Promise<Loan> {
   const { data, error } = await supabase
     .from("loans")
     .update(updates)
@@ -369,59 +417,58 @@ export async function deleteLoan(id: string): Promise<void> {
 }
 
 export async function deleteLoanWithFiles(
-  id: string, 
-  fotoPeminjamUrl: string | null, 
-  fotoBarangUrl: string | null
+  id: string,
+  fotoPeminjamUrl: string | null,
+  fotoBarangUrl: string | null,
 ) {
   const extractPath = (url: string | null): string | null => {
     if (!url) return null;
     try {
       const urlObj = new URL(url);
-      const segments = urlObj.pathname.split('/').filter(Boolean);
-      const publicIndex = segments.indexOf('public');
-      const authIndex = segments.indexOf('authenticated');
+      const segments = urlObj.pathname.split("/").filter(Boolean);
+      const publicIndex = segments.indexOf("public");
+      const authIndex = segments.indexOf("authenticated");
       const startIndex = publicIndex !== -1 ? publicIndex : authIndex;
-      
+
       if (startIndex !== -1 && startIndex + 2 < segments.length) {
-        return segments.slice(startIndex + 2).join('/');
+        return segments.slice(startIndex + 2).join("/");
       }
     } catch (e) {
-      console.warn('URL parsing failed:', url, e);
+      console.warn("URL parsing failed:", url, e);
     }
     return null;
   };
 
   const pathsToDelete = [
-    extractPath(fotoPeminjamUrl), 
-    extractPath(fotoBarangUrl)
+    extractPath(fotoPeminjamUrl),
+    extractPath(fotoBarangUrl),
   ].filter((p): p is string => Boolean(p));
 
   if (pathsToDelete.length > 0) {
-    const { error: storageError } = await supabase
-      .storage
-      .from('loans') 
+    const { error: storageError } = await supabase.storage
+      .from("loans")
       .remove(pathsToDelete);
-    
+
     if (storageError) {
-      console.error('❌ Storage delete FAILED:', {
+      console.error("❌ Storage delete FAILED:", {
         message: storageError.message,
-        paths: pathsToDelete
+        paths: pathsToDelete,
       });
     }
   }
 
   // Hapus dari database (loan_items akan terhapus otomatis karena CASCADE)
   const { error: dbError, data: dbData } = await supabase
-    .from('loans')
+    .from("loans")
     .delete()
-    .eq('id', id)
+    .eq("id", id)
     .select();
-    
+
   if (dbError) {
-    console.error('❌ Database delete FAILED:', dbError);
+    console.error("❌ Database delete FAILED:", dbError);
     throw dbError;
   }
-  
+
   return dbData;
 }
 
@@ -441,7 +488,9 @@ export async function uploadFile(
     });
   if (error) throw error;
 
-  const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return publicUrl;
 }
 
@@ -450,10 +499,13 @@ export async function uploadFile(
 // ============================================================================
 
 // Get all items for a loan
-export async function getLoanItems(loanId: string): Promise<LoanItemWithItem[]> {
+export async function getLoanItems(
+  loanId: string,
+): Promise<LoanItemWithItem[]> {
   const { data, error } = await supabase
     .from("loan_items")
-    .select(`
+    .select(
+      `
       *,
       items (
         id,
@@ -467,9 +519,10 @@ export async function getLoanItems(loanId: string): Promise<LoanItemWithItem[]> 
         barcode,
         qr_code
       )
-    `)
+    `,
+    )
     .eq("loan_id", loanId);
-    
+
   if (error) throw error;
   return (data ?? []) as LoanItemWithItem[];
 }
@@ -488,19 +541,19 @@ export async function addLoanItem(loanItem: LoanItemInsert): Promise<LoanItem> {
     .insert(loanItem)
     .select()
     .single();
-    
+
   if (error) throw error;
 
   // Kurangi stok
   await decreaseStock(loanItem.item_id, loanItem.quantity);
-  
+
   return data as LoanItem;
 }
 
 // Update quantity of loan item
 export async function updateLoanItemQuantity(
-  loanItemId: string, 
-  newQuantity: number
+  loanItemId: string,
+  newQuantity: number,
 ): Promise<LoanItem> {
   if (newQuantity < 1) throw new Error("Quantity minimal 1");
 
@@ -510,7 +563,7 @@ export async function updateLoanItemQuantity(
     .select("item_id, quantity")
     .eq("id", loanItemId)
     .single();
-    
+
   if (fetchError) throw fetchError;
 
   // Validasi stok jika quantity bertambah
@@ -529,7 +582,7 @@ export async function updateLoanItemQuantity(
     .eq("id", loanItemId)
     .select()
     .single();
-    
+
   if (error) throw error;
 
   // Adjust stok: hitung selisih
@@ -539,7 +592,7 @@ export async function updateLoanItemQuantity(
   } else if (diff < 0) {
     await increaseStock(current.item_id, Math.abs(diff));
   }
-  
+
   return data as LoanItem;
 }
 
@@ -551,7 +604,7 @@ export async function removeLoanItem(loanItemId: string): Promise<void> {
     .select("item_id, quantity")
     .eq("id", loanItemId)
     .single();
-    
+
   if (fetchError) throw fetchError;
 
   // Kembalikan stok
@@ -564,7 +617,7 @@ export async function removeLoanItem(loanItemId: string): Promise<void> {
     .from("loan_items")
     .delete()
     .eq("id", loanItemId);
-    
+
   if (error) throw error;
 }
 
@@ -580,7 +633,9 @@ export async function getActiveLoansCount(): Promise<number> {
   return count ?? 0;
 }
 
-export async function getLoansByPhoneNumber(nomor_whatsapp: string): Promise<Loan[]> {
+export async function getLoansByPhoneNumber(
+  nomor_whatsapp: string,
+): Promise<Loan[]> {
   const { data, error } = await supabase
     .from("loans")
     .select("*")

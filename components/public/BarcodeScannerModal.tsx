@@ -75,7 +75,7 @@ export default function BarcodeScannerModal({
       await html5Qrcode.start(
         { facingMode: "environment" },
         {
-          fps: 10,
+          fps: 5,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
         },

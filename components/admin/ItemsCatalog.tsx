@@ -720,14 +720,14 @@ function ItemFormDialog({
 
       <div className="space-y-2">
         <Label htmlFor="barcode" className="text-gray-200">
-          Barcode (Opsional)
+          Kode Barang
         </Label>
         <Input
           id="barcode"
           name="barcode"
           value={formData.barcode || ""}
           onChange={handleInputChange}
-          placeholder="Masukkan barcode"
+          placeholder="Masukkan kode barang"
           className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
         />
       </div>

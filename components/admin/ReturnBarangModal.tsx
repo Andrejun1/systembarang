@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import BarcodeScannerModal from "components/public/BarcodeScannerModal";
+import BarcodeScannerModal from "@/components/public/BarcodeScannerModal";
 import Image from "next/image";
 
 interface LoanWithDetails {
@@ -242,7 +242,7 @@ export default function ReturnBarangModal() {
     : false;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen bg-slate-950 p-6">
       {/* Scan Modal */}
       {showScanner && (
         <BarcodeScannerModal
@@ -254,10 +254,10 @@ export default function ReturnBarangModal() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-white">
             Pengembalian Barang
           </h2>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-400 mt-1">
             Kelola pengembalian barang yang sedang dipinjam
           </p>
         </div>
@@ -272,14 +272,14 @@ export default function ReturnBarangModal() {
 
       {/* Confirm Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent className="max-w-md bg-slate-900 border-slate-800 text-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Pengembalian</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-white">Konfirmasi Pengembalian</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
               {selectedLoan && (
                 <div className="space-y-4 mt-4">
                   {selectedLoan.foto_barang_url && (
-                    <div className="relative h-40 bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="relative h-40 bg-slate-800 rounded-lg overflow-hidden">
                       <Image
                         src={selectedLoan.foto_barang_url}
                         alt={selectedLoan.nama_barang}
@@ -291,45 +291,45 @@ export default function ReturnBarangModal() {
 
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <Package className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <Package className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-white">
                           Barang
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           {selectedLoan.nama_barang}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <User className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <User className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-white">
                           Peminjam
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           {selectedLoan.nama}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <Phone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <Phone className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-white">
                           WhatsApp
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           {selectedLoan.nomor_whatsapp}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <Clock className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-white">
                           Dipinjam{" "}
                           {formatDistanceToNow(
                             new Date(selectedLoan.tanggal_pinjam),
@@ -339,7 +339,7 @@ export default function ReturnBarangModal() {
                             },
                           )}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           Deadline:{" "}
                           {format(
                             new Date(selectedLoan.deadline),
@@ -350,7 +350,7 @@ export default function ReturnBarangModal() {
                           )}
                         </p>
                         {isOverdue && (
-                          <Badge className="mt-2 bg-red-100 text-red-800">
+                          <Badge className="mt-2 bg-red-900/50 text-red-300 border-red-800">
                             Terlambat{" "}
                             {formatDistanceToNow(
                               new Date(selectedLoan.deadline),
@@ -364,8 +364,8 @@ export default function ReturnBarangModal() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-blue-900">
+                  <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-blue-300">
                       Status: Siap Dikembalikan
                     </p>
                   </div>
@@ -374,7 +374,7 @@ export default function ReturnBarangModal() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-3">
-            <AlertDialogCancel disabled={isReturning}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={isReturning} className="bg-slate-800 text-gray-300 hover:bg-slate-700">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmReturn}
               disabled={isReturning}
@@ -397,17 +397,17 @@ export default function ReturnBarangModal() {
       </AlertDialog>
 
       {/* Active Loans List */}
-      <Card>
+      <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
-          <CardTitle>Barang Sedang Dipinjam ({loans.length})</CardTitle>
+          <CardTitle className="text-white">Barang Sedang Dipinjam ({loans.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
             </div>
           ) : loans.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
               <CheckCircle2 className="h-12 w-12 mb-3 text-green-500" />
               <p>Semua barang sudah dikembalikan</p>
             </div>
@@ -420,24 +420,24 @@ export default function ReturnBarangModal() {
                     key={loan.id}
                     className={`p-4 border rounded-lg transition-all ${
                       isLate
-                        ? "border-red-200 bg-red-50"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50"
+                        ? "border-red-900/50 bg-red-950/30"
+                        : "border-slate-700 hover:border-blue-600 hover:bg-slate-800/50"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-1">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-white">
                           {loan.nama_barang}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           {loan.nama} • {loan.nomor_whatsapp}
                         </p>
                         <div className="flex gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs border-slate-600 text-gray-300">
                             {loan.kode_unik}
                           </Badge>
                           {isLate && (
-                            <Badge className="bg-red-100 text-red-800 text-xs">
+                            <Badge className="bg-red-900/50 text-red-300 border-red-800 text-xs">
                               Terlambat
                             </Badge>
                           )}

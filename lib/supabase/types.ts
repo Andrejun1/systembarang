@@ -17,7 +17,7 @@ export type Database = {
           foto_barang_url: string | null;
           tanggal_pinjam: string;
           tanggal_kembali: string | null;
-          status: "dipinjam" | "kembali";
+          status: "dipinjam" | "kembali" | "selesai";
           item_id: string | null;
           created_at: string;
           updated_at: string;
@@ -37,7 +37,7 @@ export type Database = {
           foto_barang_url?: string | null;
           tanggal_pinjam?: string;
           tanggal_kembali?: string | null;
-          status?: "dipinjam" | "kembali";
+          status?: "dipinjam" | "kembali" | "selesai";
           item_id?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -57,7 +57,7 @@ export type Database = {
           foto_barang_url?: string | null;
           tanggal_pinjam?: string;
           tanggal_kembali?: string | null;
-          status?: "dipinjam" | "kembali";
+          status?: "dipinjam" | "kembali" | "selesai";
           item_id?: string | null;
           created_at?: string;
           updated_at?: string;
