@@ -203,8 +203,12 @@ export default function PublicHomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <FlaskConical className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center">
+                <img
+                  src="/logounimus.png"
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <span className="text-white font-bold text-lg tracking-tight">
@@ -243,12 +247,6 @@ export default function PublicHomePage() {
       {/* Hero */}
       <section className="pt-16 pb-10 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
-            <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-            <span className="text-blue-400 text-sm font-medium">
-              Live Monitoring Aktif
-            </span>
-          </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
             Sistem <span className="text-gradient">Peminjaman</span>
             <br />

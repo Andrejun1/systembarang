@@ -181,7 +181,11 @@ export default function DetailPage({ params }: { params: { kode: string } }) {
             <span className="text-sm font-medium">Kembali</span>
           </Link>
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-5 h-5 text-blue-400" />
+            <img
+                  src="/logounimus.png"
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                />
             <span className="text-white font-bold text-sm">
               Unimus Inventrack
             </span>

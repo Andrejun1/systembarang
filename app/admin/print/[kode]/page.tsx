@@ -31,8 +31,8 @@ export default function AdminPrintPage({
         qrCanvasRef.current,
         `${origin}/detail/${loan.kode_unik}`,
         {
-          width: 180,
-          margin: 2,
+          width: 100,
+          margin: 1,
           color: { dark: "#1e3a8a", light: "#ffffff" },
           errorCorrectionLevel: "H",
         },
@@ -106,7 +106,11 @@ export default function AdminPrintPage({
               <div className="flex-1">
                 <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
                   <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-lg">
-                    🎓
+                    <img
+                      src="/logounimus.png"
+                      alt="Logo"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div>
                     <p className="font-black text-lg sm:text-xl tracking-tight">
@@ -310,19 +314,54 @@ export default function AdminPrintPage({
 
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          html,
           body {
+            margin: 0 !important;
+            padding: 0 !important;
             background: white !important;
           }
+
           .no-print {
             display: none !important;
           }
+
           .no-print-bg {
             background: white !important;
             padding: 0 !important;
+            margin: 0 !important;
+            min-height: unset !important;
           }
-          .max-w-2xl {
+
+          #print-area {
             max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
             box-shadow: none !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          /* Sembunyikan header & sidebar global */
+          header,
+          nav,
+          aside,
+          footer,
+          [class*="navbar"],
+          [class*="sidebar"],
+          [class*="header"] {
+            display: none !important;
           }
         }
       `}</style>

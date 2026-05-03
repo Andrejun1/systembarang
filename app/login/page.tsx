@@ -76,7 +76,11 @@ export default function LoginPage() {
 
         <div className="relative z-10 text-center">
           <div className="w-24 h-24 rounded-3xl bg-blue-600 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-600/30 animate-float">
-            <FlaskConical className="w-12 h-12 text-white" />
+            <img
+                  src="/logounimus.png"
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                />
           </div>
           <h1 className="text-5xl font-black text-white mb-3">
             Unimus <span className="text-gradient">Inventrack</span>
@@ -122,8 +126,12 @@ export default function LoginPage() {
           <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl shadow-2xl">
             {/* Mobile logo */}
             <div className="lg:hidden flex items-center justify-center mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xl shadow-blue-600/20">
-                <FlaskConical className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-xl shadow-blue-600/20">
+                <img
+                  src="/logounimus.png"
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
 
