@@ -12,6 +12,7 @@ export interface LoanInsert {
   jurusan: string;
   semester: number;
   nomor_whatsapp: string;
+  email: string;
   deadline: string;
   foto_peminjam_url?: string | null;
   status?: "dipinjam" | "kembali" | "selesai";
@@ -35,6 +36,7 @@ export interface Loan {
   semester: number;
   nama_barang: string | null; // Opsional: referensi cepat ke item pertama
   nomor_whatsapp: string;
+  email: string | null;
   deadline: string;
   tanggal_pinjam: string;
   tanggal_kembali: string | null;
@@ -43,6 +45,7 @@ export interface Loan {
   item_id: string | null; // Opsional: referensi cepat ke item pertama
   quantity: number | null; // Opsional: quantity item pertama
   status: "dipinjam" | "kembali" | "selesai";
+  reminder_sent_at?: string | null;
   created_at: string;
   updated_at: string;
   // 👇 Field join (opsional, diisi saat fetch dengan relation)

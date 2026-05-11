@@ -29,6 +29,7 @@ export default function NewLoanPage() {
     jurusan: '',
     semester: '',
     nomor_whatsapp: '',
+    email: '',
     deadline: '',
   });
 
@@ -89,6 +90,26 @@ export default function NewLoanPage() {
       toast({
         title: 'Validasi Gagal',
         description: 'Nomor WhatsApp wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validasi email
+    if (!formData.email || formData.email.trim() === '') {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Email peminjam wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Format email tidak valid',
         variant: 'destructive',
       });
       return;
@@ -164,6 +185,7 @@ export default function NewLoanPage() {
         semester: parseInt(formData.semester),
         nama_barang: selectedItem.nama_barang,
         nomor_whatsapp: formData.nomor_whatsapp,
+        email: formData.email,
         deadline: new Date(formData.deadline).toISOString(),
         foto_peminjam_url: fotoPeminjamUrl,
         foto_barang_url: fotoBarangUrl,
@@ -174,6 +196,30 @@ export default function NewLoanPage() {
       // Decrease stock
       const { decreaseStock } = await import('@/lib/items');
       await decreaseStock(selectedItem.id, 1);
+
+      try {
+        const response = await fetch('/api/loan-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            nama: formData.nama,
+            kode_unik: newKodeUnik,
+            deadline: new Date(formData.deadline).toISOString(),
+            items: [
+              {
+                nama_barang: selectedItem.nama_barang,
+                quantity: 1,
+              },
+            ],
+          }),
+        });
+        if (!response.ok) {
+          console.warn('Email konfirmasi peminjaman gagal terkirim', await response.text());
+        }
+      } catch (sendError) {
+        console.warn('Email konfirmasi peminjaman gagal terkirim', sendError);
+      }
 
       toast({
         title: 'Berhasil!',
@@ -294,6 +340,19 @@ export default function NewLoanPage() {
                     placeholder="Contoh: 08123456789 atau +628123456789"
                   />
                   <p className="text-xs text-gray-500">Format: 08123456789 atau +628123456789</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Peminjam *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="nama@domain.com"
+                  />
                 </div>
 
                 <div className="space-y-2">

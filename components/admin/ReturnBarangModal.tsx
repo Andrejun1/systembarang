@@ -45,10 +45,11 @@ interface LoanWithDetails {
   id: string;
   kode_unik: string;
   nama: string;
+  email: string | null;
   nomor_whatsapp: string;
-  nama_barang: string;
+  nama_barang: string | null;
   deadline: string;
-  status: "dipinjam" | "kembali";
+  status: "dipinjam" | "kembali" | "selesai";
   tanggal_pinjam: string;
   tanggal_kembali: string | null;
   foto_peminjam_url: string | null;
@@ -101,6 +102,26 @@ export default function ReturnBarangModal() {
   useRealtimeListener("loans", () => {
     loadLoans();
   }, { event: "*" });
+
+  const sendReturnNotification = async (loan: LoanWithDetails) => {
+    if (!loan.email) return;
+    try {
+      await fetch("/api/loan-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "return",
+          email: loan.email,
+          nama: loan.nama,
+          kode_unik: loan.kode_unik,
+          deadline: loan.deadline,
+          items: [{ nama_barang: loan.nama_barang ?? "Barang", quantity: 1 }],
+        }),
+      });
+    } catch (error) {
+      console.warn("Email pengembalian gagal dikirim", error);
+    }
+  };
 
   const handleScanResult = async (kodeBarang: string) => {
     // Prevent duplicate scans within 2 seconds
@@ -170,12 +191,15 @@ export default function ReturnBarangModal() {
           await increaseStock(loan.item_id, 1);
         }
 
-        // 3. Reload loans
+        // 3. Send return notification
+        await sendReturnNotification(loan);
+
+        // 4. Reload loans
         await loadLoans();
 
         toast({
           title: "Berhasil!",
-          description: `Barang "${loan.nama_barang}" berhasil dikembalikan.`,
+          description: `Barang "${loan.nama_barang ?? "item"}" berhasil dikembalikan.`,
         });
 
         setSelectedLoan(null);
@@ -215,12 +239,15 @@ export default function ReturnBarangModal() {
         await increaseStock(selectedLoan.item_id, 1);
       }
 
-      // 3. Reload loans
+      // 3. Send return notification
+      await sendReturnNotification(selectedLoan);
+
+      // 4. Reload loans
       await loadLoans();
 
       toast({
         title: "Berhasil!",
-        description: `Barang "${selectedLoan.nama_barang}" berhasil dikembalikan.`,
+        description: `Barang "${selectedLoan.nama_barang ?? "item"}" berhasil dikembalikan.`,
       });
 
       setShowConfirmDialog(false);
@@ -282,7 +309,7 @@ export default function ReturnBarangModal() {
                     <div className="relative h-40 bg-slate-800 rounded-lg overflow-hidden">
                       <Image
                         src={selectedLoan.foto_barang_url}
-                        alt={selectedLoan.nama_barang}
+                        alt={selectedLoan.nama_barang ?? "Foto barang"}
                         fill
                         className="object-cover"
                       />
