@@ -13,7 +13,8 @@ export interface LoanInsert {
   semester: number;
   nomor_whatsapp: string;
   email: string;
-  deadline: string;
+  pickup_date: string; // Tanggal pengambilan barang (YYYY-MM-DD)
+  deadline: string; // Deadline pengembalian (akan disimpan dengan jam 23:59:00)
   foto_peminjam_url?: string | null;
   status?: "dipinjam" | "kembali" | "selesai";
   // ❌ Field item-specific dihapus: pindah ke loan_items
@@ -23,6 +24,8 @@ export interface LoanInsert {
 export interface LoanUpdate {
   status?: "dipinjam" | "kembali" | "selesai";
   tanggal_kembali?: string | null;
+  reminder_h2_sent_at?: string | null;
+  reminder_deadline_sent_at?: string | null;
   // Tambahkan field lain jika perlu diupdate di header loan
 }
 
@@ -37,15 +40,18 @@ export interface Loan {
   nama_barang: string | null; // Opsional: referensi cepat ke item pertama
   nomor_whatsapp: string;
   email: string | null;
-  deadline: string;
-  tanggal_pinjam: string;
+  pickup_date: string | null; // Tanggal pengambilan barang
+  deadline: string; // Deadline pengembalian dengan jam 23:59:00
+  tanggal_pinjam: string; // created_at (otomatis server timestamp)
   tanggal_kembali: string | null;
   foto_peminjam_url: string | null;
   foto_barang_url: string | null; // Opsional: foto referensi
   item_id: string | null; // Opsional: referensi cepat ke item pertama
   quantity: number | null; // Opsional: quantity item pertama
   status: "dipinjam" | "kembali" | "selesai";
-  reminder_sent_at?: string | null;
+  reminder_sent_at?: string | null; // Deprecated: gunakan reminder_h2_sent_at dan reminder_deadline_sent_at
+  reminder_h2_sent_at?: string | null; // Timestamp reminder H-2 dikirim
+  reminder_deadline_sent_at?: string | null; // Timestamp reminder hari deadline dikirim
   created_at: string;
   updated_at: string;
   // 👇 Field join (opsional, diisi saat fetch dengan relation)
@@ -121,6 +127,13 @@ export async function createLoan(
     ...loanData
   } = loan;
 
+  // 🔧 REF: Sistem tanggal dan waktu yang stabil
+  // - created_at: otomatis dari server (DEFAULT now())
+  // - deadline: tambahkan jam 23:59:00 untuk konsistensi
+  // - pickup_date: simpan sebagai DATE (YYYY-MM-DD)
+  const deadlineWithTime = new Date(loanData.deadline);
+  deadlineWithTime.setHours(23, 59, 0, 0); // Set jam 23:59:00
+
   const { data, error } = await supabase
     .from("loans")
     .insert({
@@ -129,7 +142,8 @@ export async function createLoan(
       item_id,
       quantity,
       foto_barang_url,
-      tanggal_pinjam: new Date().toISOString(),
+      deadline: deadlineWithTime.toISOString(), // Deadline dengan jam 23:59:00
+      // created_at otomatis dari server (DEFAULT now())
       status: loanData.status ?? "dipinjam",
     })
     .select()
@@ -166,17 +180,25 @@ export async function createLoanWithItems(
     }
   }
 
+  // 🔧 REF: Sistem tanggal dan waktu yang stabil
+  // - created_at: otomatis dari server (DEFAULT now())
+  // - deadline: tambahkan jam 23:59:00 untuk konsistensi
+  // - pickup_date: simpan sebagai DATE (YYYY-MM-DD)
+  const deadlineWithTime = new Date(loanData.deadline);
+  deadlineWithTime.setHours(23, 59, 0, 0); // Set jam 23:59:00
+
   // 1️⃣ Buat record loan utama (header)
   const { data: loan, error: loanError } = await supabase
     .from("loans")
     .insert({
       ...loanData,
+      deadline: deadlineWithTime.toISOString(), // Deadline dengan jam 23:59:00
       // Isi field referensi cepat dengan item pertama (opsional, untuk backward compat)
       nama_barang: items[0].item.nama_barang,
       item_id: items[0].item.id,
       quantity: items[0].quantity,
       foto_barang_url: items[0].foto_barang_url ?? null,
-      tanggal_pinjam: new Date().toISOString(),
+      // created_at otomatis dari server (DEFAULT now())
       status: loanData.status ?? "dipinjam",
     })
     .select()

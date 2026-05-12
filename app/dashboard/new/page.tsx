@@ -30,6 +30,7 @@ export default function NewLoanPage() {
     semester: '',
     nomor_whatsapp: '',
     email: '',
+    pickup_date: '', // Tanggal pengambilan barang
     deadline: '',
   });
 
@@ -126,6 +127,29 @@ export default function NewLoanPage() {
       return;
     }
 
+    // Validasi pickup_date
+    if (!formData.pickup_date || formData.pickup_date.trim() === '') {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Tanggal pengambilan barang wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validasi pickup_date tidak boleh sebelum hari ini
+    const pickupDate = new Date(formData.pickup_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (pickupDate < today) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Tanggal pengambilan tidak boleh sebelum hari ini',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validasi deadline
     if (!formData.deadline || formData.deadline.trim() === '') {
       toast({
@@ -138,8 +162,6 @@ export default function NewLoanPage() {
 
     // Validasi deadline harus lebih dari hari ini
     const deadlineDate = new Date(formData.deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     if (deadlineDate <= today) {
       toast({
         title: 'Validasi Gagal',
@@ -186,7 +208,8 @@ export default function NewLoanPage() {
         nama_barang: selectedItem.nama_barang,
         nomor_whatsapp: formData.nomor_whatsapp,
         email: formData.email,
-        deadline: new Date(formData.deadline).toISOString(),
+        pickup_date: formData.pickup_date, // Tanggal pengambilan barang
+        deadline: formData.deadline, // Deadline akan di-process di lib/loans.ts dengan jam 23:59:00
         foto_peminjam_url: fotoPeminjamUrl,
         foto_barang_url: fotoBarangUrl,
         item_id: selectedItem.id,
@@ -356,7 +379,20 @@ export default function NewLoanPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deadline">Deadline Pengembalian *</Label>
+                  <Label htmlFor="pickup_date">Tanggal Pengambilan Barang *</Label>
+                  <Input
+                    id="pickup_date"
+                    name="pickup_date"
+                    type="date"
+                    value={formData.pickup_date}
+                    onChange={handleInputChange}
+                    required
+                  />
+                  <p className="text-xs text-gray-500">Minimal: hari ini</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="deadline">Tanggal Deadline Pengembalian *</Label>
                   <Input
                     id="deadline"
                     name="deadline"

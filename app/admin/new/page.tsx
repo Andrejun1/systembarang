@@ -47,7 +47,8 @@ export default function NewLoanPage() {
     semester: "",
     nomor_whatsapp: "",
     email: "",
-    deadline: "",
+    pickup_date: "", // Tanggal pengambilan barang (tanpa waktu)
+    deadline: "", // Tanggal deadline pengembalian (akan disimpan dengan jam 23:59)
   });
 
   const [fotoPeminjam, setFotoPeminjam] = useState<File | null>(null);
@@ -261,14 +262,48 @@ export default function NewLoanPage() {
       return;
     }
 
-    // Validasi deadline harus lebih dari hari ini
-    const deadlineDate = new Date(formData.deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (deadlineDate <= today) {
+    // Validasi pickup_date (tanggal pengambilan)
+    if (!formData.pickup_date || formData.pickup_date.trim() === "") {
       toast({
         title: "Validasi Gagal",
-        description: "Deadline harus lebih dari hari ini",
+        description: "Tanggal Pengambilan wajib diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // ✅ VALIDATION: Pickup date harus >= hari ini
+    const pickupDate = new Date(formData.pickup_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (pickupDate < today) {
+      toast({
+        title: "Validasi Gagal",
+        description: "Tanggal Pengambilan tidak boleh lebih awal dari hari ini",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // ✅ VALIDATION: Deadline harus >= hari ini
+    const deadlineDate = new Date(formData.deadline);
+    deadlineDate.setHours(0, 0, 0, 0);
+
+    if (deadlineDate < today) {
+      toast({
+        title: "Validasi Gagal",
+        description: "Deadline harus lebih dari atau sama dengan hari ini",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // ✅ VALIDATION: Deadline harus >= pickup_date
+    if (deadlineDate < pickupDate) {
+      toast({
+        title: "Validasi Gagal",
+        description: "Deadline tidak boleh lebih awal dari Tanggal Pengambilan",
         variant: "destructive",
       });
       return;
@@ -321,7 +356,8 @@ export default function NewLoanPage() {
           semester: parseInt(formData.semester),
           nomor_whatsapp: formData.nomor_whatsapp,
           email: formData.email,
-          deadline: new Date(formData.deadline).toISOString(),
+          pickup_date: formData.pickup_date, // Tanggal pengambilan (YYYY-MM-DD)
+          deadline: new Date(formData.deadline).toISOString(), // Akan disimpan dengan jam 23:59:00
           foto_peminjam_url: fotoPeminjamUrl,
           status: "dipinjam",
         },
@@ -525,6 +561,27 @@ export default function NewLoanPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label
+                    htmlFor="pickup_date"
+                    className="text-white/60 text-xs font-semibold uppercase tracking-wide"
+                  >
+                    Tanggal Pengambilan <span className="text-blue-400">*</span>
+                  </label>
+                  <input
+                    id="pickup_date"
+                    name="pickup_date"
+                    type="date"
+                    value={formData.pickup_date}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/40 text-sm transition-all disabled:opacity-50"
+                  />
+                  <p className="text-white/30 text-xs">
+                    Minimal: hari ini atau lebih
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label
                     htmlFor="deadline"
                     className="text-white/60 text-xs font-semibold uppercase tracking-wide"
                   >
@@ -542,7 +599,7 @@ export default function NewLoanPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/40 text-sm transition-all disabled:opacity-50"
                   />
                   <p className="text-white/30 text-xs">
-                    Minimal: lebih dari hari ini
+                    Minimal: sama dengan atau lebih dari Tanggal Pengambilan
                   </p>
                 </div>
               </div>
