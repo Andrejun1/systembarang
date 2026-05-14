@@ -80,35 +80,57 @@ function getHoursUntilDeadline(deadline: string): number {
 }
 
 /**
- * Cek apakah sekarang sudah memasuki hari deadline
- * Deadline disimpan dengan jam 23:59:00, jadi hari deadline dimulai dari jam 00:00 hari tersebut
+ * ⏱️ TIMEZONE HELPER: Format tanggal dalam format YYYY-MM-DD
+ * menggunakan timezone Asia/Jakarta (WIB/UTC+7)
+ *
+ * Alasan: Database deadline disimpan dalam TIMESTAMPTZ dengan jam 23:59:00.
+ * Untuk membandingkan hanya berdasarkan tanggal (bukan exact jam), kita perlu
+ * mengekstrak tanggal dalam timezone Jakarta saja.
+ *
+ * @param date - JavaScript Date object
+ * @returns String format YYYY-MM-DD dalam timezone Asia/Jakarta
  */
-function isDeadlineDay(deadline: string): boolean {
-  const now = new Date();
-  const deadlineTime = new Date(deadline);
-
-  // Buat versi tanpa waktu untuk perbandingan
-  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const deadlineDate = new Date(
-    deadlineTime.getFullYear(),
-    deadlineTime.getMonth(),
-    deadlineTime.getDate(),
-  );
-
-  return nowDate.getTime() === deadlineDate.getTime();
+function formatDateInJakarta(date: Date): string {
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
 }
 
 /**
- * Cek apakah sekarang berada dalam range H-2 (2 hari sebelum deadline)
- * H-2 dimulai dari 48 jam sebelum deadline dan berakhir saat hari deadline mulai
+ * 🔄 TIMEZONE HELPER: Konversi tanggal YYYY-MM-DD ke range UTC untuk query database
+ *
+ * Database menyimpan deadline sebagai TIMESTAMPTZ. Ketika kita ingin mencocokkan
+ * berdasarkan DATE (bukan exact timestamp), kita perlu:
+ * 1. Konversi tanggal target menjadi waktu di timezone Jakarta (+07:00)
+ * 2. Buat range [00:00:00+07:00 hingga 23:59:59+07:00]
+ * 3. Konversi range tersebut ke UTC untuk perbandingan dengan database
+ *
+ * Contoh:
+ * - Input: "2026-05-20" (hari H-2 dalam timezone Jakarta)
+ * - Output: {
+ *     start: "2026-05-19T17:00:00.000Z" (2026-05-20 00:00:00+07:00 dalam UTC)
+ *     end:   "2026-05-20T16:59:59.000Z" (2026-05-20 23:59:59+07:00 dalam UTC)
+ *   }
+ *
+ * @param dateStr - Format YYYY-MM-DD dalam timezone Jakarta
+ * @returns { start, end } - ISO timestamp strings dalam UTC untuk query
  */
-function isWithinH2Period(deadline: string): boolean {
-  const now = new Date();
-  const deadlineTime = new Date(deadline);
+function getDateRangeInUTC(dateStr: string): { start: string; end: string } {
+  // PENTING: Timestamp string dibuat dengan +07:00 timezone offset
+  // Ini memastikan "2026-05-20T00:00:00+07:00" diinterpretasi sebagai
+  // pukul 00:00 di Jakarta, bukan 00:00 UTC
+  const startJakarta = new Date(`${dateStr}T00:00:00+07:00`);
+  const endJakarta = new Date(`${dateStr}T23:59:59+07:00`);
 
-  const h2Start = new Date(deadlineTime.getTime() - 48 * 60 * 60 * 1000);
-
-  return now >= h2Start && now < deadlineTime;
+  // toISOString() otomatis konversi ke UTC
+  return {
+    start: startJakarta.toISOString(),
+    end: endJakarta.toISOString(),
+  };
 }
 
 // ============================================================================
@@ -271,8 +293,6 @@ Ini adalah pengingat otomatis hari deadline dari Unimus Inventrack.`;
 // ============================================================================
 
 export async function GET() {
-  const now = new Date();
-
   const supabase = createSupabaseClient();
   const resend = createResendClient();
 
@@ -290,26 +310,54 @@ export async function GET() {
     // ========================================================================
     // 1️⃣ REMINDER H-2 (2 hari sebelum deadline)
     // ========================================================================
-    // Query: ambil loan yang:
-    // - status = 'dipinjam'
-    // - deadline dalam 48 jam ke depan (H-2)
-    // - reminder_h2_sent_at IS NULL (belum dikirim)
+    // REFACTORED LOGIC (Date-based, bukan exact timestamp):
+    //
+    // H-2 = deadline tanggal X, maka H-2 adalah tanggal X-2
+    // Contoh:
+    //   - Deadline: 16 Mei 2026 23:59 WIB
+    //   - H-2 dikirim: 14 Mei 2026 (sepanjang hari)
+    //
+    // CATATAN TIMEZONE:
+    // - Server timezone: UTC
+    // - Deadline stored: TIMESTAMPTZ dengan jam 23:59 (WIB)
+    // - Perlu extract DATE dalam timezone Asia/Jakarta untuk comparison
+    // - Hindari exact 48 hour logic karena tidak stabil dengan timezone & jam 23:59
 
-    const h2Start = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const h2End = new Date(now.getTime() + 1 * 60 * 1000); // Buffer 1 menit
+    const now = new Date();
 
+    // 1. Dapatkan tanggal dalam timezone Jakarta (YYYY-MM-DD)
+    const todayJakarta = formatDateInJakarta(now);
+
+    // 2. Hitung H-2 date: hari ini + 2 hari (dalam timezone Jakarta)
+    const h2DateInMs = now.getTime() + 2 * 24 * 60 * 60 * 1000;
+    const h2Date = formatDateInJakarta(new Date(h2DateInMs));
+
+    // 3. Konversi ke UTC range untuk query database
+    // Range: [h2Date 00:00:00+07:00 ... h2Date 23:59:59+07:00] dalam UTC
+    const h2Range = getDateRangeInUTC(h2Date);
+
+    console.log(
+      `[H-2] Today Jakarta: ${todayJakarta}, H-2 Date: ${h2Date}, UTC Range: ${h2Range.start} to ${h2Range.end}`,
+    );
+
+    // 4. Query: deadline antara h2Range.start dan h2Range.end
+    // Logika:
+    // - gte("deadline", h2Range.start) : deadline >= start of H-2 date in UTC
+    // - lte("deadline", h2Range.end)   : deadline <= end of H-2 date in UTC
+    // Hasil: semua deadline yang jatuh pada tanggal H-2 (dalam timezone Jakarta)
     const { data: loansH2, error: errorH2 } = await supabase
       .from("loans")
       .select(
         "id,kode_unik,nama,email,nomor_whatsapp,deadline,reminder_h2_sent_at,reminder_deadline_sent_at",
       )
       .eq("status", "dipinjam")
-      .gte("deadline", h2Start.toISOString())
-      .lt("deadline", h2End.toISOString())
+      .gte("deadline", h2Range.start)
+      .lte("deadline", h2Range.end)
       .is("reminder_h2_sent_at", null)
       .order("deadline", { ascending: true });
 
     if (errorH2) {
+      console.error("❌ H-2 Query Error:", errorH2);
       return NextResponse.json({ error: errorH2.message }, { status: 500 });
     }
 
@@ -372,26 +420,43 @@ export async function GET() {
     // ========================================================================
     // 2️⃣ REMINDER DEADLINE (hari deadline)
     // ========================================================================
-    // Query: ambil loan yang:
-    // - status = 'dipinjam'
-    // - deadline hari ini (setelah jam 00:00 hari ini, sebelum jam 23:59)
-    // - reminder_deadline_sent_at IS NULL (belum dikirim)
+    // REFACTORED LOGIC (Date-based, bukan exact timestamp):
+    //
+    // Deadline reminder dikirim pada tanggal deadline itu sendiri (hari ini)
+    // Contoh:
+    //   - Deadline: 16 Mei 2026 23:59 WIB
+    //   - Reminder dikirim: 16 Mei 2026 (sepanjang hari)
+    //
+    // CATATAN TIMEZONE:
+    // - Extract DATE dalam timezone Asia/Jakarta
+    // - Bandingkan dengan tanggal hari ini (juga dalam timezone Jakarta)
+    // - Hindari masalah UTC vs WIB dengan menggunakan date range boundary
 
-    const deadlineStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const deadlineEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    // 1. Dapatkan tanggal hari ini dalam timezone Jakarta (YYYY-MM-DD)
+    const todayRange = getDateRangeInUTC(todayJakarta);
 
+    console.log(
+      `[DEADLINE] Today Jakarta: ${todayJakarta}, UTC Range: ${todayRange.start} to ${todayRange.end}`,
+    );
+
+    // 2. Query: deadline antara todayRange.start dan todayRange.end
+    // Logika:
+    // - gte("deadline", todayRange.start) : deadline >= start of today in UTC
+    // - lte("deadline", todayRange.end)   : deadline <= end of today in UTC
+    // Hasil: semua deadline yang jatuh pada hari ini (dalam timezone Jakarta)
     const { data: loansDeadline, error: errorDeadline } = await supabase
       .from("loans")
       .select(
         "id,kode_unik,nama,email,nomor_whatsapp,deadline,reminder_h2_sent_at,reminder_deadline_sent_at",
       )
       .eq("status", "dipinjam")
-      .gte("deadline", deadlineStart.toISOString())
-      .lte("deadline", deadlineEnd.toISOString())
+      .gte("deadline", todayRange.start)
+      .lte("deadline", todayRange.end)
       .is("reminder_deadline_sent_at", null)
       .order("deadline", { ascending: true });
 
     if (errorDeadline) {
+      console.error("❌ Deadline Query Error:", errorDeadline);
       return NextResponse.json({ error: errorDeadline.message }, { status: 500 });
     }
 

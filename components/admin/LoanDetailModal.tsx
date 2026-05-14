@@ -191,6 +191,15 @@ export default function LoanDetailModal({
                   { locale: idLocale },
                 ),
               },
+              {
+                icon: Clock,
+                label: "Deadline Pengembalian",
+                value: format(
+                  new Date(loan.deadline),
+                  "dd MMM yyyy, HH:mm",
+                  { locale: idLocale },
+                ),
+              },
               ...(loan.tanggal_kembali
                 ? [
                     {

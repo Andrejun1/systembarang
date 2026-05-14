@@ -308,6 +308,7 @@ export default function AdminLoansPage() {
                       "Peminjam",
                       "Barang",
                       "Tanggal Pinjam",
+                      "Deadline",
                       "Durasi",
                       "Status",
                       "Aksi",
@@ -384,6 +385,13 @@ export default function AdminLoansPage() {
                         <td className="px-5 py-4 text-white/50 text-xs">
                           {format(
                             new Date(loan.tanggal_pinjam),
+                            "dd MMM yyyy HH:mm",
+                            { locale: idLocale },
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-white/50 text-xs">
+                          {format(
+                            new Date(loan.deadline),
                             "dd MMM yyyy HH:mm",
                             { locale: idLocale },
                           )}
@@ -489,6 +497,12 @@ export default function AdminLoansPage() {
                       >
                         {loan.status === "dipinjam" ? "Dipinjam" : "Kembali"}
                       </span>
+                    </div>
+                    <div className="mb-3 flex items-center justify-between text-xs">
+                      <div>
+                        <p className="text-white/30 mb-0.5">Pinjam: <span className="text-white/50">{format(new Date(loan.tanggal_pinjam), "dd MMM HH:mm", { locale: idLocale })}</span></p>
+                        <p className="text-white/30">Deadline: <span className="text-white/50">{format(new Date(loan.deadline), "dd MMM HH:mm", { locale: idLocale })}</span></p>
+                      </div>
                     </div>
                     <div className="mb-1">
                       <p className="text-white/50 text-sm mb-1">📦 Barang:</p>

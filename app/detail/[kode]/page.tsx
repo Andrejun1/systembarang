@@ -309,6 +309,15 @@ export default function DetailPage({ params }: { params: { kode: string } }) {
                 { locale: idLocale },
               )}
             />
+            <InfoRow
+              icon={Clock}
+              label="Deadline Pengembalian"
+              value={format(
+                new Date(loan.deadline),
+                "dd MMMM yyyy, HH:mm",
+                { locale: idLocale },
+              )}
+            />
             {loan.tanggal_kembali && (
               <InfoRow
                 icon={CheckCircle2}
