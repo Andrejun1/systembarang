@@ -402,6 +402,33 @@ export async function updateLoan(
   return data as Loan;
 }
 
+/**
+ * Update deadline loan (deadlineDateOnly: YYYY-MM-DD)
+ * - Disimpan dengan jam otomatis 23:59:00
+ */
+export async function updateLoanDeadline(
+  loanId: string,
+  deadlineDateOnly: string,
+): Promise<Loan> {
+  // date-only => local midnight then set time to 23:59:00
+  const base = new Date(deadlineDateOnly);
+  if (Number.isNaN(base.getTime())) {
+    throw new Error("Invalid deadline date");
+  }
+
+  base.setHours(23, 59, 0, 0);
+
+  const { data, error } = await supabase
+    .from("loans")
+    .update({ deadline: base.toISOString() })
+    .eq("id", loanId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Loan;
+}
+
 // 👇 UPDATED: Return loan - handle multi-items
 export async function returnLoan(id: string): Promise<Loan> {
   // 1. Ambil loan dengan items-nya

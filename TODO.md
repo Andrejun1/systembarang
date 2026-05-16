@@ -1,12 +1,8 @@
-# Task: Fix TS Error in Print Page & Ensure A4 Print Layout
-
-## Plan Steps
-
-- [x] 1. Create TODO.md for tracking
-- [x] 2. Fix TypeScript error in app/dashboard/print/[kode]/page.tsx (setLoan type mismatch)
-- [x] 3. Verify print layout fits exactly A4
-- [x] 4. Test page loads without TS errors
-- [x] 5. Test print preview exactly A4 size
-- [x] 6. attempt_completion
-
-**Status**: Completed ✅ - Print layout diperkecil lagi (190mm width, 8mm margin, smaller fonts/padding)
+- [ ] Add `updateLoanDeadline` helper in `lib/loans.ts`
+- [ ] Refactor `app/admin/loans/page.tsx` for optimistic delete + return
+- [ ] Add edit-deadline UI: icon button + dialog with `input type="date"`
+- [ ] Implement `updateLoanDeadline` handler with validations (>= today, >= pickup_date if available)
+- [ ] Add per-row loading state for deadline saving
+- [ ] Ensure filteredLoans updates instantly via `setLoans` optimistic updates
+- [ ] Keep/verify Supabase realtime subscription for production sync
+- [ ] Typecheck/build to ensure TS safety

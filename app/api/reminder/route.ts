@@ -457,7 +457,10 @@ export async function GET() {
 
     if (errorDeadline) {
       console.error("❌ Deadline Query Error:", errorDeadline);
-      return NextResponse.json({ error: errorDeadline.message }, { status: 500 });
+      return NextResponse.json(
+        { error: errorDeadline.message },
+        { status: 500 },
+      );
     }
 
     const sentDeadline: ReminderResult[] = [];

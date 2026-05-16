@@ -175,13 +175,25 @@ export async function POST(request: Request) {
 
   const payload = (await request.json()) as LoanNotificationPayload;
 
-  if (!payload.email || !payload.nama || !payload.kode_unik || !payload.deadline) {
-    return NextResponse.json({ error: "Payload tidak lengkap." }, { status: 400 });
+  if (
+    !payload.email ||
+    !payload.nama ||
+    !payload.kode_unik ||
+    !payload.deadline
+  ) {
+    return NextResponse.json(
+      { error: "Payload tidak lengkap." },
+      { status: 400 },
+    );
   }
 
   const isReturn = payload.type === "return";
-  const html = isReturn ? buildReturnHtml(payload) : buildConfirmationHtml(payload);
-  const text = isReturn ? buildReturnText(payload) : buildConfirmationText(payload);
+  const html = isReturn
+    ? buildReturnHtml(payload)
+    : buildConfirmationHtml(payload);
+  const text = isReturn
+    ? buildReturnText(payload)
+    : buildConfirmationText(payload);
   const subject = isReturn
     ? `Konfirmasi Pengembalian - ${payload.kode_unik}`
     : `Konfirmasi Peminjaman - ${payload.kode_unik}`;
@@ -196,6 +208,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message ?? "Gagal mengirim email." }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message ?? "Gagal mengirim email." },
+      { status: 500 },
+    );
   }
 }

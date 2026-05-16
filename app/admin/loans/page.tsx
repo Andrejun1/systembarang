@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { getAllLoans, returnLoan, deleteLoanWithFiles } from "@/lib/loans";
+import { useEffect, useState } from "react";
+import {
+  getAllLoans,
+  returnLoan,
+  deleteLoanWithFiles,
+  updateLoanDeadline,
+} from "@/lib/loans";
 import { Loan, LoanItemWithItem } from "@/lib/loans";
 import { supabase } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -21,10 +26,22 @@ import {
   User,
   Clock,
   Filter,
+  Calendar,
+  Pencil,
 } from "lucide-react";
 import LoanDetailModal from "@/components/admin/LoanDetailModal";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 import ReturnConfirmModal from "@/components/admin/ReturnConfirmModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 type LoanWithItems = Loan & {
   loan_items?: LoanItemWithItem[];
@@ -48,6 +65,14 @@ export default function AdminLoansPage() {
     null,
   );
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // Edit deadline
+  const [editDeadlineLoan, setEditDeadlineLoan] =
+    useState<LoanWithItems | null>(null);
+  const [deadlineDraft, setDeadlineDraft] = useState<string>("");
+  const [deadlineSavingForId, setDeadlineSavingForId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     loadLoans();
@@ -96,10 +121,30 @@ export default function AdminLoansPage() {
     }
   };
 
+  const updateLoanDeadlineInState = (loanId: string, deadlineISO: string) => {
+    setLoans((prev) =>
+      prev.map((l) => (l.id === loanId ? { ...l, deadline: deadlineISO } : l)),
+    );
+  };
+
   const handleReturn = async (loan: LoanWithItems) => {
     setProcessing(loan.id);
     try {
       await returnLoan(loan.id);
+
+      // optimistic-like: ensure immediate UI update (even if realtime is delayed)
+      setLoans((prev) =>
+        prev.map((l) =>
+          l.id === loan.id
+            ? {
+                ...l,
+                status: "kembali",
+                tanggal_kembali: new Date().toISOString(),
+              }
+            : l,
+        ),
+      );
+
       toast({
         title: "✅ Berhasil",
         description: "Barang ditandai sebagai dikembalikan",
@@ -131,12 +176,15 @@ export default function AdminLoansPage() {
 
     setProcessing(loan.id);
     try {
-      // Hapus dengan file di storage juga
       await deleteLoanWithFiles(
         loan.id,
         loan.foto_peminjam_url,
         loan.foto_barang_url,
       );
+
+      // optimistic: remove instantly from UI
+      setLoans((prev) => prev.filter((l) => l.id !== loan.id));
+
       toast({
         title: "🗑 Dihapus",
         description: "Data peminjaman dan foto berhasil dihapus",
@@ -208,6 +256,101 @@ export default function AdminLoansPage() {
     loan_items: loan.loan_items,
   });
 
+  const handleOpenEditDeadline = (loan: LoanWithItems) => {
+    setEditDeadlineLoan(loan);
+    // convert deadline (ISO) => YYYY-MM-DD for input
+    const dateOnly = loan.deadline ? new Date(loan.deadline) : null;
+    if (!dateOnly || Number.isNaN(dateOnly.getTime())) {
+      setDeadlineDraft("");
+      return;
+    }
+    const yyyy = dateOnly.getFullYear();
+    const mm = String(dateOnly.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateOnly.getDate()).padStart(2, "0");
+    setDeadlineDraft(`${yyyy}-${mm}-${dd}`);
+  };
+
+  const handleSaveDeadline = async () => {
+    if (!editDeadlineLoan) return;
+
+    const loanId = editDeadlineLoan.id;
+    const loanPickupDate = editDeadlineLoan.pickup_date; // YYYY-MM-DD or null
+
+    if (!deadlineDraft) {
+      toast({
+        title: "Validasi",
+        description: "Deadline wajib diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validation date-only
+    const selected = new Date(deadlineDraft);
+    if (Number.isNaN(selected.getTime())) {
+      toast({
+        title: "Validasi",
+        description: "Deadline tanggal tidak valid",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    selected.setHours(0, 0, 0, 0);
+
+    if (selected < today) {
+      toast({
+        title: "Validasi",
+        description: "Deadline tidak boleh sebelum hari ini",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (loanPickupDate) {
+      const pickup = new Date(loanPickupDate);
+      pickup.setHours(0, 0, 0, 0);
+      if (selected < pickup) {
+        toast({
+          title: "Validasi",
+          description: "Deadline tidak boleh sebelum tanggal pickup",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // deadline saved with 23:59:00
+    const deadlineToSave = new Date(deadlineDraft);
+    deadlineToSave.setHours(23, 59, 0, 0);
+    const deadlineISO = deadlineToSave.toISOString();
+
+    setDeadlineSavingForId(loanId);
+    try {
+      await updateLoanDeadline(loanId, deadlineDraft);
+
+      // optimistic UI update
+      updateLoanDeadlineInState(loanId, deadlineISO);
+
+      toast({
+        title: "✅ Deadline diperbarui",
+        description: "Tanggal pengembalian berhasil dipanjangkan/diedit",
+      });
+      setEditDeadlineLoan(null);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan deadline",
+        variant: "destructive",
+      });
+    } finally {
+      setDeadlineSavingForId(null);
+    }
+  };
+
   return (
     <>
       {showDetail && selectedLoan && (
@@ -231,6 +374,63 @@ export default function AdminLoansPage() {
           onConfirm={() => handleReturn(confirmReturn)}
           onClose={() => setConfirmReturn(null)}
         />
+      )}
+
+      {editDeadlineLoan && (
+        <Dialog
+          open={!!editDeadlineLoan}
+          onOpenChange={(open) => {
+            if (!open) setEditDeadlineLoan(null);
+          }}
+        >
+          <DialogContent className="bg-slate-900 border-white/10 text-white max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Deadline</DialogTitle>
+              <DialogDescription>
+                Ubah deadline pengembalian barang (disimpan jam 23:59:00).
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Input
+                id="deadline"
+                name="deadline"
+                type="date"
+                value={deadlineDraft}
+                onChange={(e) => setDeadlineDraft(e.target.value)}
+                className="bg-slate-800 border-white/10 text-white"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditDeadlineLoan(null)}
+                disabled={deadlineSavingForId === editDeadlineLoan.id}
+                className="bg-white/5 text-white hover:bg-white/10 border border-white/10"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveDeadline}
+                disabled={deadlineSavingForId === editDeadlineLoan.id}
+                className="bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                {deadlineSavingForId === editDeadlineLoan.id ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Menyimpan...
+                  </span>
+                ) : (
+                  "Simpan"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <div className="space-y-5 max-w-7xl">
@@ -435,6 +635,19 @@ export default function AdminLoansPage() {
                                 <Printer className="w-4 h-4" />
                               </div>
                             </Link>
+                            <button
+                              onClick={() => handleOpenEditDeadline(loan)}
+                              disabled={deadlineSavingForId === loan.id}
+                              className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                              title="Edit Deadline"
+                            >
+                              {deadlineSavingForId === loan.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Pencil className="w-4 h-4" />
+                              )}
+                            </button>
+
                             {loan.status === "dipinjam" && (
                               <button
                                 onClick={() => setConfirmReturn(loan)}
@@ -500,8 +713,24 @@ export default function AdminLoansPage() {
                     </div>
                     <div className="mb-3 flex items-center justify-between text-xs">
                       <div>
-                        <p className="text-white/30 mb-0.5">Pinjam: <span className="text-white/50">{format(new Date(loan.tanggal_pinjam), "dd MMM HH:mm", { locale: idLocale })}</span></p>
-                        <p className="text-white/30">Deadline: <span className="text-white/50">{format(new Date(loan.deadline), "dd MMM HH:mm", { locale: idLocale })}</span></p>
+                        <p className="text-white/30 mb-0.5">
+                          Pinjam:{" "}
+                          <span className="text-white/50">
+                            {format(
+                              new Date(loan.tanggal_pinjam),
+                              "dd MMM HH:mm",
+                              { locale: idLocale },
+                            )}
+                          </span>
+                        </p>
+                        <p className="text-white/30">
+                          Deadline:{" "}
+                          <span className="text-white/50">
+                            {format(new Date(loan.deadline), "dd MMM HH:mm", {
+                              locale: idLocale,
+                            })}
+                          </span>
+                        </p>
                       </div>
                     </div>
                     <div className="mb-1">
