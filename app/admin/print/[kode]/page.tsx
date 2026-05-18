@@ -81,13 +81,7 @@ export default function AdminPrintPage({
   return (
     <>
       {/* Print controls - hidden when printing */}
-      <div className="no-print fixed top-4 left-4 right-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
-        <Link href="/admin/loans">
-          <button className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl shadow hover:bg-gray-50 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Kembali
-          </button>
-        </Link>
+      <div className="no-print fixed top-4 right-4 z-50">
         <button
           onClick={() => window.print()}
           className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/20 transition-colors"
@@ -99,7 +93,10 @@ export default function AdminPrintPage({
 
       {/* Print page */}
       <div className="min-h-screen bg-gray-100 pt-28 sm:pt-20 pb-10 px-4 no-print-bg">
-        <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none print:p-0">
+        <div
+          id="print-area"
+          className="max-w-2xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden"
+        >
           {/* Header strip */}
           <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -316,10 +313,12 @@ export default function AdminPrintPage({
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm;
+            margin: 5mm;
           }
 
-          * {
+          *,
+          *::before,
+          *::after {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -329,6 +328,12 @@ export default function AdminPrintPage({
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
+            background-color: white !important;
+          }
+
+          /* Hapus background abu / hitam dari semua div */
+          div {
+            background-color: transparent;
           }
 
           .no-print {
@@ -337,6 +342,7 @@ export default function AdminPrintPage({
 
           .no-print-bg {
             background: white !important;
+            background-color: white !important;
             padding: 0 !important;
             margin: 0 !important;
             min-height: unset !important;
@@ -346,11 +352,38 @@ export default function AdminPrintPage({
             max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
             border-radius: 0 !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             page-break-inside: avoid;
             break-inside: avoid;
+          }
+
+          /* Kompres padding dalam konten agar muat 1 halaman */
+          #print-area .p-4,
+          #print-area .p-8,
+          #print-area .sm\\:p-8 {
+            padding: 0.75rem !important;
+          }
+
+          #print-area .mb-6,
+          #print-area .mb-8,
+          #print-area .sm\\:mb-8 {
+            margin-bottom: 0.75rem !important;
+          }
+
+          #print-area .gap-8,
+          #print-area .sm\\:gap-8 {
+            gap: 1rem !important;
+          }
+
+          #print-area .mb-16 {
+            margin-bottom: 3rem !important;
+          }
+
+          #print-area .mt-8 {
+            margin-top: 1rem !important;
           }
 
           /* Sembunyikan header & sidebar global */
