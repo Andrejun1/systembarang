@@ -45,6 +45,8 @@ import { Label } from "@/components/ui/label";
 
 type LoanWithItems = Loan & {
   loan_items?: LoanItemWithItem[];
+  // Pastikan field email ada jika ingin mengirim notifikasi
+  email?: string | null;
 };
 
 export default function AdminLoansPage() {
@@ -127,12 +129,55 @@ export default function AdminLoansPage() {
     );
   };
 
+  // ✅ FUNGSI BARU: Kirim Email Notifikasi Pengembalian
+  const sendReturnNotification = async (loan: LoanWithItems) => {
+    // Cek apakah email tersedia
+    if (!loan.email) {
+      console.warn("Email tidak ditemukan pada data loan, skip notifikasi.");
+      return;
+    }
+
+    try {
+      await fetch("/api/loan-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "return",
+          email: loan.email,
+          nama: loan.nama,
+          kode_unik: loan.kode_unik,
+          deadline: loan.deadline,
+          // Siapkan data item untuk email
+          items:
+            loan.loan_items && loan.loan_items.length > 0
+              ? loan.loan_items.map((li) => ({
+                  nama_barang: li.items?.nama_barang ?? "Barang",
+                  quantity: li.quantity ?? 1,
+                }))
+              : [
+                  {
+                    nama_barang: loan.nama_barang ?? "Barang",
+                    quantity: loan.quantity ?? 1,
+                  },
+                ],
+        }),
+      });
+    } catch (error) {
+      console.warn("Gagal mengirim email notifikasi pengembalian", error);
+      // Kita tidak melempar error ke sini agar proses return tetap dianggap sukses secara UI
+    }
+  };
+
   const handleReturn = async (loan: LoanWithItems) => {
     setProcessing(loan.id);
     try {
+      // 1. Update status di database
       await returnLoan(loan.id);
 
-      // optimistic-like: ensure immediate UI update (even if realtime is delayed)
+      // 2. ✅ KIRIM EMAIL NOTIFIKASI
+      await sendReturnNotification(loan);
+
+      // 3. Optimistic UI update
       setLoans((prev) =>
         prev.map((l) =>
           l.id === loan.id
@@ -147,7 +192,8 @@ export default function AdminLoansPage() {
 
       toast({
         title: "✅ Berhasil",
-        description: "Barang ditandai sebagai dikembalikan",
+        description:
+          "Barang ditandai sebagai dikembalikan & notifikasi terkirim",
       });
       setConfirmReturn(null);
     } catch {
@@ -256,7 +302,18 @@ export default function AdminLoansPage() {
     loan_items: loan.loan_items,
   });
 
+  // ✅ VALIDASI: Tidak bisa edit deadline jika sudah kembali
   const handleOpenEditDeadline = (loan: LoanWithItems) => {
+    if (loan.status === "kembali") {
+      toast({
+        title: "⛔ Tidak Dapat Diedit",
+        description:
+          "Deadline tidak dapat diubah karena barang sudah dikembalikan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditDeadlineLoan(loan);
     // convert deadline (ISO) => YYYY-MM-DD for input
     const dateOnly = loan.deadline ? new Date(loan.deadline) : null;
@@ -638,8 +695,16 @@ export default function AdminLoansPage() {
                             <button
                               onClick={() => handleOpenEditDeadline(loan)}
                               disabled={deadlineSavingForId === loan.id}
-                              className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                              title="Edit Deadline"
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                loan.status === "kembali"
+                                  ? "opacity-30 cursor-not-allowed text-white/20"
+                                  : "hover:bg-white/10 text-white/40 hover:text-white"
+                              }`}
+                              title={
+                                loan.status === "kembali"
+                                  ? "Barang sudah kembali"
+                                  : "Edit Deadline"
+                              }
                             >
                               {deadlineSavingForId === loan.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -777,6 +842,20 @@ export default function AdminLoansPage() {
                           <Printer className="w-3.5 h-3.5" /> Print
                         </span>
                       </Link>
+
+                      {/* Tombol Edit Deadline Mobile dengan Validasi */}
+                      <button
+                        onClick={() => handleOpenEditDeadline(loan)}
+                        disabled={loan.status === "kembali"}
+                        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                          loan.status === "kembali"
+                            ? "text-gray-500 bg-gray-800/50 cursor-not-allowed"
+                            : "text-white/60 hover:text-white bg-white/5 hover:bg-white/10"
+                        }`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit Deadline
+                      </button>
+
                       {loan.status === "dipinjam" && (
                         <button
                           onClick={() => setConfirmReturn(loan)}
