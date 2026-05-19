@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { buildQrHtmlBlock } from "@/lib/email-qr";
 
 export const dynamic = "force-dynamic";
 const resendFrom = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -140,9 +141,16 @@ function getDateRangeInUTC(dateStr: string): { start: string; end: string } {
 /**
  * Build HTML untuk reminder H-2 (2 hari sebelum deadline)
  */
-function buildReminderH2Html(loan: ReminderLoan): string {
+async function buildReminderH2Html(loan: ReminderLoan): Promise<string> {
   const hoursLeft = getHoursUntilDeadline(loan.deadline);
   const daysLeft = Math.ceil(hoursLeft / 24);
+
+  // Generate QR — fail-safe: jika gagal, qrBlock = ""
+  const qrBlock = await buildQrHtmlBlock(loan.kode_unik, {
+    size: 160,
+    borderColor: "#fcd34d",
+    bgColor: "#fffbeb",
+  });
 
   return `
     <html>
@@ -165,6 +173,7 @@ function buildReminderH2Html(loan: ReminderLoan): string {
               </div>
             </td>
           </tr>
+          ${qrBlock}
           <tr>
             <td>
               <p style="color:#334155; font-size:15px; line-height:1.75;">
@@ -191,7 +200,14 @@ function buildReminderH2Html(loan: ReminderLoan): string {
 /**
  * Build HTML untuk reminder hari deadline
  */
-function buildReminderDeadlineHtml(loan: ReminderLoan): string {
+async function buildReminderDeadlineHtml(loan: ReminderLoan): Promise<string> {
+  // Generate QR — fail-safe: jika gagal, qrBlock = ""
+  const qrBlock = await buildQrHtmlBlock(loan.kode_unik, {
+    size: 160,
+    borderColor: "#fca5a5",
+    bgColor: "#fff5f5",
+  });
+
   return `
     <html>
       <body style="font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#f6f8fb; margin:0; padding:0;">
@@ -212,6 +228,7 @@ function buildReminderDeadlineHtml(loan: ReminderLoan): string {
               </div>
             </td>
           </tr>
+          ${qrBlock}
           <tr>
             <td>
               <p style="color:#334155; font-size:15px; line-height:1.75;">
@@ -376,7 +393,7 @@ export async function GET() {
 
       try {
         const subject = `⏰ Pengingat H-2: Pengembalian Barang - ${loan.kode_unik}`;
-        const html = buildReminderH2Html(loan as ReminderLoan);
+        const html = await buildReminderH2Html(loan as ReminderLoan);
         const text = buildReminderH2Text(loan as ReminderLoan);
 
         await resend.emails.send({
@@ -478,7 +495,7 @@ export async function GET() {
 
       try {
         const subject = `🚨 HARI DEADLINE: Segera Kembalikan Barang - ${loan.kode_unik}`;
-        const html = buildReminderDeadlineHtml(loan as ReminderLoan);
+        const html = await buildReminderDeadlineHtml(loan as ReminderLoan);
         const text = buildReminderDeadlineText(loan as ReminderLoan);
 
         await resend.emails.send({

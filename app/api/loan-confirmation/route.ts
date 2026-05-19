@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { buildQrHtmlBlock } from "@/lib/email-qr";
 
 export const dynamic = "force-dynamic";
 const resendFrom = process.env.RESEND_FROM_EMAIL ?? "reminder@resend.dev";
@@ -31,13 +32,22 @@ function formatDateTime(value: string) {
   });
 }
 
-function buildConfirmationHtml(payload: LoanNotificationPayload) {
+async function buildConfirmationHtml(
+  payload: LoanNotificationPayload,
+): Promise<string> {
   const itemRows = payload.items
     .map(
       (item) =>
         `<tr><td style="padding:8px 0; border-bottom:1px solid #e2e8f0;">${item.nama_barang}</td><td style="padding:8px 0; border-bottom:1px solid #e2e8f0; text-align:right;">${item.quantity}</td></tr>`,
     )
     .join("");
+
+  // Generate QR — fail-safe: jika gagal, qrBlock = ""
+  const qrBlock = await buildQrHtmlBlock(payload.kode_unik, {
+    size: 160,
+    borderColor: "#bfdbfe",
+    bgColor: "#eff6ff",
+  });
 
   return `
     <html>
@@ -73,6 +83,7 @@ function buildConfirmationHtml(payload: LoanNotificationPayload) {
               </table>
             </td>
           </tr>
+          ${qrBlock}
           <tr>
             <td>
               <p style="color:#334155; font-size:15px; line-height:1.75;">Jika Anda membutuhkan bantuan lebih lanjut, silakan balas email ini atau hubungi admin laboratorium.</p>
@@ -89,13 +100,22 @@ function buildConfirmationHtml(payload: LoanNotificationPayload) {
   `;
 }
 
-function buildReturnHtml(payload: LoanNotificationPayload) {
+async function buildReturnHtml(
+  payload: LoanNotificationPayload,
+): Promise<string> {
   const itemRows = payload.items
     .map(
       (item) =>
         `<tr><td style="padding:8px 0; border-bottom:1px solid #e2e8f0;">${item.nama_barang}</td><td style="padding:8px 0; border-bottom:1px solid #e2e8f0; text-align:right;">${item.quantity}</td></tr>`,
     )
     .join("");
+
+  // Generate QR — fail-safe: jika gagal, qrBlock = ""
+  const qrBlock = await buildQrHtmlBlock(payload.kode_unik, {
+    size: 160,
+    borderColor: "#bbf7d0",
+    bgColor: "#f0fdf4",
+  });
 
   return `
     <html>
@@ -131,6 +151,7 @@ function buildReturnHtml(payload: LoanNotificationPayload) {
               </table>
             </td>
           </tr>
+          ${qrBlock}
           <tr>
             <td>
               <p style="color:#334155; font-size:15px; line-height:1.75;">Jika butuh bantuan lanjutan, silakan balas email ini atau hubungi admin laboratorium.</p>
@@ -188,12 +209,16 @@ export async function POST(request: Request) {
   }
 
   const isReturn = payload.type === "return";
+
+  // Build HTML (async karena generate QR)
   const html = isReturn
-    ? buildReturnHtml(payload)
-    : buildConfirmationHtml(payload);
+    ? await buildReturnHtml(payload)
+    : await buildConfirmationHtml(payload);
+
   const text = isReturn
     ? buildReturnText(payload)
     : buildConfirmationText(payload);
+
   const subject = isReturn
     ? `Konfirmasi Pengembalian - ${payload.kode_unik}`
     : `Konfirmasi Peminjaman - ${payload.kode_unik}`;
@@ -206,8 +231,10 @@ export async function POST(request: Request) {
       html,
       text,
     });
+    console.log(`[loan-confirmation] Email ${isReturn ? "return" : "confirmation"} terkirim ke ${payload.email} (${payload.kode_unik})`);
     return NextResponse.json({ ok: true });
   } catch (error: any) {
+    console.error(`[loan-confirmation] Gagal kirim email untuk ${payload.kode_unik}:`, error?.message);
     return NextResponse.json(
       { error: error?.message ?? "Gagal mengirim email." },
       { status: 500 },
