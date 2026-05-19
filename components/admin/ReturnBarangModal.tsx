@@ -183,13 +183,8 @@ export default function ReturnBarangModal() {
       // Automatically process the return without showing dialog
       setIsReturning(true);
       try {
-        // 1. Update loan status to 'kembali'
+        // 1. Update loan status to 'kembali' and restore stock internally
         await returnLoan(loan.id);
-
-        // 2. Increase stock if item_id exists
-        if (loan.item_id) {
-          await increaseStock(loan.item_id, 1);
-        }
 
         // 3. Send return notification
         await sendReturnNotification(loan);
@@ -231,13 +226,8 @@ export default function ReturnBarangModal() {
 
     setIsReturning(true);
     try {
-      // 1. Update loan status to 'kembali'
+      // 1. Update loan status to 'kembali' and restore stock internally
       await returnLoan(selectedLoan.id);
-
-      // 2. Increase stock if item_id exists
-      if (selectedLoan.item_id) {
-        await increaseStock(selectedLoan.item_id, 1);
-      }
 
       // 3. Send return notification
       await sendReturnNotification(selectedLoan);

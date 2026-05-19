@@ -429,7 +429,7 @@ export async function updateLoanDeadline(
   return data as Loan;
 }
 
-// 👇 UPDATED: Return loan - handle multi-items
+// 👇 UPDATED: Return loan - handle multi-items safely (prevent race condition)
 export async function returnLoan(id: string): Promise<Loan> {
   // 1. Ambil loan dengan items-nya
   const loan = await getLoanWithItems(id);
@@ -438,25 +438,64 @@ export async function returnLoan(id: string): Promise<Loan> {
     throw new Error("Barang sudah dikembalikan");
   }
 
-  // 2. Kembalikan stok untuk SETIAP item dalam loan_items
-  if (loan.loan_items && loan.loan_items.length > 0) {
-    for (const loanItem of loan.loan_items) {
-      if (loanItem.item_id && loanItem.quantity && loanItem.quantity > 0) {
-        await increaseStock(loanItem.item_id, loanItem.quantity);
-      }
-    }
-  } else {
-    // Fallback: jika loan_items kosong, coba gunakan field legacy (single-item)
-    if (loan.item_id && loan.quantity && loan.quantity > 0) {
-      await increaseStock(loan.item_id, loan.quantity);
-    }
+  // 2. ATOMIC UPDATE STATUS LOAN FIRST
+  // Menggunakan optimistic lock: hanya update jika status masih "dipinjam".
+  // Ini mencegah race condition (misal double-click atau network delay)
+  // yang bisa menyebabkan increment stok berkali-kali.
+  const { data: updatedLoan, error: updateError } = await supabase
+    .from("loans")
+    .update({
+      status: "kembali",
+      tanggal_kembali: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("status", "dipinjam") // <- Kunci atomic
+    .select()
+    .maybeSingle();
+
+  if (updateError) {
+    throw new Error(`Gagal update status peminjaman: ${updateError.message}`);
   }
 
-  // 3. Update status loan
-  return updateLoan(id, {
-    status: "kembali",
-    tanggal_kembali: new Date().toISOString(),
-  });
+  // Jika updatedLoan null, berarti ada request lain yang sudah mengubah statusnya menjadi "kembali"
+  if (!updatedLoan) {
+    throw new Error(
+      "Peminjaman sedang diproses atau sudah dikembalikan oleh admin lain.",
+    );
+  }
+
+  // 3. KEMBALIKAN STOK HANYA SETELAH STATUS BERHASIL DIUBAH
+  try {
+    if (loan.loan_items && loan.loan_items.length > 0) {
+      for (const loanItem of loan.loan_items) {
+        if (loanItem.item_id && loanItem.quantity && loanItem.quantity > 0) {
+          await increaseStock(loanItem.item_id, loanItem.quantity);
+        }
+      }
+    } else {
+      // Fallback: jika loan_items kosong, coba gunakan field legacy (single-item)
+      if (loan.item_id && loan.quantity && loan.quantity > 0) {
+        await increaseStock(loan.item_id, loan.quantity);
+      }
+    }
+  } catch (stockError: any) {
+    // 4. ROLLBACK JIKA GAGAL UPDATE STOK
+    // Jika Supabase API gagal update stok (misal network error), kita rollback status peminjaman
+    console.error(
+      "Gagal mengembalikan stok, melakukan rollback status loan:",
+      stockError,
+    );
+    await supabase
+      .from("loans")
+      .update({ status: "dipinjam", tanggal_kembali: null })
+      .eq("id", id);
+
+    throw new Error(
+      `Gagal mengembalikan stok barang: ${stockError.message}. Silakan coba lagi.`,
+    );
+  }
+
+  return updatedLoan as Loan;
 }
 
 // ============================================================================

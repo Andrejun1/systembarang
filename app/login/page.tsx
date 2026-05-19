@@ -28,27 +28,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  try {
-    const res = await signIn(email, password);
+    try {
+      const res = await signIn(email, password);
 
-    console.log("LOGIN SUCCESS:", res);
+      console.log("LOGIN SUCCESS:", res);
 
-    if (res.session) {
-      window.location.href = "/admin/dashboard";
-    } else {
-      setError("Session tidak ditemukan");
+      if (res.session) {
+        router.push("/admin/dashboard");
+        router.refresh();
+      } else {
+        setError("Session tidak ditemukan");
+      }
+    } catch (err: any) {
+      console.error("LOGIN ERROR:", err);
+      setError(err.message || "Login gagal");
+    } finally {
+      setLoading(false);
     }
-  } catch (err: any) {
-    console.error("LOGIN ERROR:", err);
-    setError(err.message || "Login gagal");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div
@@ -77,10 +78,10 @@ export default function LoginPage() {
         <div className="relative z-10 text-center">
           <div className="w-24 h-24 rounded-3xl bg-blue-600 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-600/30 animate-float">
             <img
-                  src="/logounimus.png"
-                  alt="Logo"
-                  className="w-full h-full object-contain"
-                />
+              src="/logounimus.png"
+              alt="Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-5xl font-black text-white mb-3">
             Unimus <span className="text-gradient">Inventrack</span>
