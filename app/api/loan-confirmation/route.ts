@@ -124,7 +124,7 @@ async function buildReturnHtml(
           <tr>
             <td style="padding-bottom:24px; text-align:center;">
               <h1 style="margin:0; font-size:26px; color:#0f172a;">Konfirmasi Pengembalian Barang</h1>
-              <p style="margin:8px 0 0; color:#475569; font-size:15px; line-height:1.6;">Halo ${payload.nama}, pengembalian Anda telah berhasil dicatat. Terima kasih telah mengembalikan barang tepat waktu.</p>
+              <p style="margin:8px 0 0; color:#475569; font-size:15px; line-height:1.6;">Halo ${payload.nama}, pengembalian Anda telah berhasil dicatat. Terima kasih telah mengembalikan barang.</p>
             </td>
           </tr>
           <tr>
@@ -181,7 +181,7 @@ function buildReturnText(payload: LoanNotificationPayload) {
     .map((item) => `- ${item.nama_barang} x${item.quantity}`)
     .join("\n");
 
-  return `Konfirmasi Pengembalian Barang\n\nKode Peminjaman: ${payload.kode_unik}\nNama: ${payload.nama}\nDeadline Pengembalian: ${formatDateTime(payload.deadline)}\n\nBarang yang dikembalikan:\n${itemsText}\n\nTerima kasih telah mengembalikan barang tepat waktu.`;
+  return `Konfirmasi Pengembalian Barang\n\nKode Peminjaman: ${payload.kode_unik}\nNama: ${payload.nama}\nDeadline Pengembalian: ${formatDateTime(payload.deadline)}\n\nBarang yang dikembalikan:\n${itemsText}\n\nTerima kasih telah mengembalikan barang.`;
 }
 
 export async function POST(request: Request) {
@@ -231,10 +231,15 @@ export async function POST(request: Request) {
       html,
       text,
     });
-    console.log(`[loan-confirmation] Email ${isReturn ? "return" : "confirmation"} terkirim ke ${payload.email} (${payload.kode_unik})`);
+    console.log(
+      `[loan-confirmation] Email ${isReturn ? "return" : "confirmation"} terkirim ke ${payload.email} (${payload.kode_unik})`,
+    );
     return NextResponse.json({ ok: true });
   } catch (error: any) {
-    console.error(`[loan-confirmation] Gagal kirim email untuk ${payload.kode_unik}:`, error?.message);
+    console.error(
+      `[loan-confirmation] Gagal kirim email untuk ${payload.kode_unik}:`,
+      error?.message,
+    );
     return NextResponse.json(
       { error: error?.message ?? "Gagal mengirim email." },
       { status: 500 },
